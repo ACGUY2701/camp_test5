@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TODOリスト</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/le-frog/jquery-ui.css"
+    />
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1/i18n/jquery.ui.datepicker-ja.min.js"></script>
+    <link rel="stylesheet" href="css/todo.css" />
+    <link rel="stylesheet" href="css/husen.css" />
+    <!-- ↓FontAwsomeアイコンの呼び出し -->
+    <link
+      href="https://use.fontawesome.com/releases/v5.0.8/css/all.css"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body>
+    <header>
+      <img src="img/ダウンロード (5).jpg" alt="ロゴ" id="logo" />
+      <h1>TODOリスト</h1>
+    </header>
+    <main>
+      <input type="text" id="datepicker" placeholder="DATE" />
+
+      <textarea id="memo" placeholder="TODO"></textarea>
+
+      <div id="aa">
+        <input type="file" id="file" multiple />
+        <div><i id="save" class="fas fa-plus-circle fa-2x"></i></div>
+      </div>
+
+      <img id="imgsample" style="display: block;" />
+    </main>
+    <div id="list">
+      <!-- ここに追加データが挿入される -->
+    </div>
+
+    <!-- JavaScript -->
+    <!-- <script type="text/javascript" src="js/todo_list.js"></script> -->
+
+    <!-- firebaseの部分 -->
+    <!-- The core Firebase JS SDK is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/7.14.2/firebase.js"></script>
+
+    <script>
+      // Your web app's Firebase configuration
+      var firebaseConfig = {
+        apiKey: "AIzaSyDmPIc7pV-eKwH5_CsFKVCKK3oNYhF_M_4",
+        authDomain: "todolist-69d0c.firebaseapp.com",
+        databaseURL: "https://todolist-69d0c.firebaseio.com",
+        projectId: "todolist-69d0c",
+        storageBucket: "todolist-69d0c.appspot.com",
+        messagingSenderId: "39096965450",
+        appId: "1:39096965450:web:fabdb8f9ad457eb83809b3",
+      };
+      // Initialize Firebase
+      firebase.initializeApp(firebaseConfig);
+
+      //firebaseのデーターベース（保存させる場所）を使いますよと言うjsのコードを貼り付ける
+      // xxxxxスクリプトを貼り付ける
+      const newPostRef = firebase.database().ref();
+
+      // カレンダーの適用
+      $(function () {
+        $("#datepicker").datepicker();
+        $("#datepicker").datepicker("option", "showOn", "button");
+      });
+
+      // カレンダーの日付を取得(getDate関数)
+      $("#datepicker").datepicker("getDate");
+      //  立ち上げて2秒後にフェードイン
+      $("main").fadeIn(500);
+
+      //画像のアップロードfunction
+      $("#file").on("change", function (e) {
+        // 1枚だけ表示する
+        var file = e.target.files[0];
+
+        //firebaseのストレージを利用する
+        ref = firebase.storage().ref().child(`image/${file.name}`);
+
+        //ファイルリーダ作成
+        var fileReader = new FileReader();
+        fileReader.onload = function () {
+          //dataURLを取得
+          var dataurl = this.result;
+          console.log(dataurl);
+          //img要素を表示
+          $("#imgsample").attr("src", dataurl);
+        };
+
+        //ファイルData URlとして読み込む
+        fileReader.readAsDataURL(file);
+
+        //firebasestorageにアップロードを行う。
+        ref.put(file).then(function (snapshot) {
+          console.log(snapshot);
+        });
+      });
+
+      //1.ADD TODO クリックイベント
+      $("#save").on("click", function () {
+        //アップロードした画像のダウンロードURLを取得
+        ref.getDownloadURL().then(function (url) {
+          downurl = url;
+          console.log(downurl);
+          // $("#uploadpict").attr("src", downurl);
+        });
+        // データを登録して送る
+        newPostRef.push({
+          date: $("#datepicker").val(), //日付
+          value: $("#memo").val(), //テキストエリア
+          pict: downurl,
+        });
+
+        // 文字を空にする
+        $("#datepicker").val(""); //空にする
+        $("#memo").val(""); //空にする
+
+        // //プレビュー画面の画像を削除
+        $("#imgsample").attr("src", "");
+
+        //ファイル選択をクリア
+        $("#file").val("");
+
+        //ページをリロードする
+        location.reload(true);
+      });
+
+      // Enterを押したら、投稿する。
+      // ↓eventの省略形でeを入力
+      // ↓enterが押されたら、送信される。
+      $("#memo").on("keydown", function (e) {
+        if (e.key == "Enter") {
+          newPostRef.push({
+            date: $("#datepicker").val(), //日付
+            value: $("#memo").val(), //テキストエリア
+          });
+          // 文字を空にする
+          $("#datepicker").val(""); //空にする
+          $("#memo").val(""); //空にする
+        }
+      });
+
+      // 受信処理
+      // dataは入れると全てのデータを取ってくる
+      newPostRef.on("child_added", function (data) {
+        let v = data.val();
+        let k = data.key;
+
+        console.log(v);
+        console.log(k);
+
+        let husen = `<div id="note"><i id="delete-button" class="far fa-check-circle fa-2x"></i>
+              ${v.date}<br><img border="0"src="${v.pict}" id=uploadpict><br>${v.value}
+              </div>
+              `;
+
+        // HTMLへ付箋として表示
+        $("#list").prepend(husen);
+        // 付箋をドラッグできるようにする
+        $("#note").draggable();
+
+        // 付箋データを削除する（firebaseのデータベース内）
+        $("#delete-button").on("click", function () {
+          firebase
+            .database()
+            .ref(k)
+            .remove()
+            .then(function () {
+              alert("削除しました");
+            });
+
+          // ＨＴＭＬからも削除する
+          $(this).parent("#note").remove();
+        });
+
+        // この↓消しちゃダメ
+      });
+    </script>
+
+    <footer><small>Let's work</small></footer>
+  </body>
+</html>
